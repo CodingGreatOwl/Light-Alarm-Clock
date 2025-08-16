@@ -52,7 +52,7 @@ fun AlarmClockApp(alarmRepository: AlarmRepository) {
 
     when (currentScreen) {
         "list" -> AlarmListScreen(
-            alarms = alarmRepository.getAllAlarms(),
+            alarms = alarmsState,
             onAddAlarm = { currentScreen = "add" },
             onEditAlarm = { alarm ->
                 editingAlarm = alarm
