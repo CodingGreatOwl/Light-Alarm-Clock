@@ -1,5 +1,6 @@
 package com.example.lightalarmclock
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -15,10 +16,16 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.ui.unit.dp
 import com.example.lightalarmclock.ui.theme.LightAlarmClockTheme
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PhoneAndroid
+import androidx.compose.material.icons.filled.Settings
+import android.provider.Settings
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
 
 // MainActivity.kt
 class MainActivity : ComponentActivity() {
@@ -34,15 +41,18 @@ class MainActivity : ComponentActivity() {
                     AlarmClockApp(alarmRepository)
                 }
             }
+            val bleSettingsViewModel = remember { BleSettingsViewModel() }
         }
     }
 }
 
 @Composable
 fun AlarmClockApp(alarmRepository: AlarmRepository) {
+    val bleSettingsViewModel = remember { BleSettingsViewModel() }
     val alarmsState = remember { mutableStateListOf<Alarm>().apply { addAll(alarmRepository.getAllAlarms()) } }
     var currentScreen by remember { mutableStateOf("list") }
     var editingAlarm by remember { mutableStateOf<Alarm?>(null) }
+    val context = LocalContext.current
 
     // Helper to refresh alarms
     fun refreshAlarms() {
@@ -65,7 +75,8 @@ fun AlarmClockApp(alarmRepository: AlarmRepository) {
             onDeleteAlarm = { alarm ->
                 alarmRepository.deleteAlarm(alarm)
                 refreshAlarms()
-            }
+            },
+            onOpenBleSettings = { currentScreen = "bleSettings" }
         )
 
         "add" -> AddEditAlarmScreen(
@@ -87,8 +98,109 @@ fun AlarmClockApp(alarmRepository: AlarmRepository) {
             },
             onCancel = { currentScreen = "list" }
         )
+        "bleSettings" -> BluetoothSettingsScreen(
+            deviceAddress = bleSettingsViewModel.deviceAddress.value,
+            onDeviceAddressChange = { bleSettingsViewModel.deviceAddress.value = it },
+            serviceUuid = bleSettingsViewModel.serviceUuid.value,
+            onServiceUuidChange = { bleSettingsViewModel.serviceUuid.value = it },
+            message = bleSettingsViewModel.message.value,
+            onMessageChange = { bleSettingsViewModel.message.value = it },
+            onOpenBluetoothSettings = {
+                val intent = Intent(Settings.ACTION_BLUETOOTH_SETTINGS)
+                context.startActivity(intent)
+            },
+            onTestConnection = @androidx.annotation.RequiresPermission(android.Manifest.permission.BLUETOOTH_CONNECT) { bleSettingsViewModel.testConnection(context) },
+            connectionStatus = bleSettingsViewModel.connectionStatus.value,
+            onSendMessage = @androidx.annotation.RequiresPermission(android.Manifest.permission.BLUETOOTH_CONNECT) { bleSettingsViewModel.sendMessage(context) },
+            messageStatus = bleSettingsViewModel.messageStatus.value,
+            onBack = { currentScreen = "list" }
+        )
     }
 }
+
+@Composable
+fun BluetoothSettingsScreen(
+    deviceAddress: String,
+    onDeviceAddressChange: (String) -> Unit,
+    serviceUuid: String,
+    onServiceUuidChange: (String) -> Unit,
+    message: String,
+    onMessageChange: (String) -> Unit,
+    onOpenBluetoothSettings: () -> Unit,
+    onTestConnection: () -> Unit,
+    connectionStatus: String,
+    onSendMessage: () -> Unit,
+    messageStatus: String,
+    onBack: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(text = "Bluetooth Settings", style = MaterialTheme.typography.headlineMedium)
+            IconButton(onClick = onBack) {
+                Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+            }
+        }
+
+        OutlinedTextField(
+            value = deviceAddress,
+            onValueChange = onDeviceAddressChange,
+            label = { Text("Device Address") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        OutlinedTextField(
+            value = serviceUuid,
+            onValueChange = onServiceUuidChange,
+            label = { Text("Service UUID") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        OutlinedTextField(
+            value = message,
+            onValueChange = onMessageChange,
+            label = { Text("Message") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Button(onClick = onOpenBluetoothSettings, modifier = Modifier.fillMaxWidth()) {
+            Text("Open Bluetooth Settings")
+        }
+
+        Button(onClick = onTestConnection, modifier = Modifier.fillMaxWidth()) {
+            Text("Test Connection")
+        }
+        if (connectionStatus.isNotEmpty()) {
+            Text(
+                text = connectionStatus,
+                color = if (connectionStatus.contains("Success", ignoreCase = true)) Color.Green else Color.Red,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        Button(onClick = onSendMessage, modifier = Modifier.fillMaxWidth()) {
+            Text("Send Message")
+        }
+        if (messageStatus.isNotEmpty()) {
+            Text(
+                text = messageStatus,
+                color = if (messageStatus.contains("Sent", ignoreCase = true)) Color.Green else Color.Red,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
 
 @Composable
 fun AlarmListScreen(
@@ -96,7 +208,8 @@ fun AlarmListScreen(
     onAddAlarm: () -> Unit,
     onEditAlarm: (Alarm) -> Unit,
     onToggleAlarm: (Alarm) -> Unit,
-    onDeleteAlarm: (Alarm) -> Unit
+    onDeleteAlarm: (Alarm) -> Unit,
+    onOpenBleSettings: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -113,11 +226,13 @@ fun AlarmListScreen(
                 style = MaterialTheme.typography.headlineMedium
             )
 
-            FloatingActionButton(
-                onClick = onAddAlarm,
-                modifier = Modifier.size(48.dp)
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Alarm")
+            Row {
+                IconButton(onClick = onOpenBleSettings) {
+                    Icon(Icons.Default.Settings, contentDescription = "Bluetooth Settings")
+                }
+                IconButton(onClick = onAddAlarm) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Alarm")
+                }
             }
         }
 
