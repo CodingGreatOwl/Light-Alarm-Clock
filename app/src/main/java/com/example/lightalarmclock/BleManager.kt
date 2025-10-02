@@ -4,14 +4,12 @@ import android.Manifest
 import android.bluetooth.*
 import android.content.Context
 import android.os.Build
-import android.os.Handler
-import android.os.Looper
 import androidx.annotation.RequiresPermission
-import androidx.core.app.ActivityCompat
 import java.util.*
 
 class BleManager(private val context: Context) {
     private var bluetoothGatt: BluetoothGatt? = null
+
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun connectAndSend(
@@ -31,7 +29,6 @@ class BleManager(private val context: Context) {
                     onResult(true, "Connection successful")
                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                     gatt.close()
-                    onResult(false, "Disconnected")
                 }
             }
 
@@ -43,6 +40,7 @@ class BleManager(private val context: Context) {
                     val charac = service?.getCharacteristic(UUID.fromString(characteristicUuid))
                     if (charac != null) {
                         writeCharacteristicCompat(gatt, charac, message.toByteArray(), onResult)
+                        onResult(true, "Message Sent")
                     } else {
                         onResult(false, "Characteristic not found")
                         gatt.disconnect()
@@ -52,6 +50,13 @@ class BleManager(private val context: Context) {
                     onResult(false, "Service discovery failed")
                     gatt.disconnect()
                     gatt.close()
+                }
+            }
+
+            @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+            override fun onCharacteristicWrite(gatt: BluetoothGatt, char: BluetoothGattCharacteristic, status: Int) {
+                if (status == BluetoothGatt.GATT_SUCCESS) {
+                    gatt.disconnect()
                 }
             }
         })
@@ -74,12 +79,13 @@ class BleManager(private val context: Context) {
             @Suppress("DEPRECATION")
             characteristic.setValue(data)
             @Suppress("DEPRECATION")
-            val result = gatt.writeCharacteristic(characteristic)
-            onResult(result, if (result) "Message sent" else "Write failed")
+            gatt.writeCharacteristic(characteristic)
             gatt.disconnect()
             gatt.close()
         }
     }
+
+
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun testConnection(

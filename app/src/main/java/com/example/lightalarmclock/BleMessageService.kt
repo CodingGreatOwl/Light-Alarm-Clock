@@ -1,6 +1,5 @@
 package com.example.lightalarmclock
 
-import BlePreferencesManager
 import android.Manifest
 import android.app.*
 import android.content.Context
@@ -9,19 +8,26 @@ import android.os.*
 import androidx.annotation.RequiresPermission
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.*
 
 class BleMessageService : Service() {
-    private lateinit var prefsManager: BlePreferencesManager
+    private lateinit var dataStore: BleSettingsDataStore
+    private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     companion object {
         private const val CHANNEL_ID = "BleMessageChannel"
         private const val NOTIFICATION_ID = 1001
+
+        fun startBleMessageService(context: Context) {
+            val intent = Intent(context, BleMessageService::class.java)
+            ContextCompat.startForegroundService(context, intent)
+        }
     }
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        prefsManager = BlePreferencesManager(this)
+        dataStore = BleSettingsDataStore(this)
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -29,40 +35,37 @@ class BleMessageService : Service() {
         val notification = createNotification("Connecting to BLE device…")
         startForeground(NOTIFICATION_ID, notification)
 
-        // Read settings from SharedPreferences instead of Intent extras
-        val address = prefsManager.getDeviceAddress()
-        val serviceUuid = prefsManager.getServiceUuid()
-        val characteristicUuid = prefsManager.getCharacteristicUuid()
-        val message = prefsManager.getMessage()
+        serviceScope.launch {
+            try {
+                // Read settings from DataStore
+                val settings = dataStore.getSettings()
 
-
-        // Use BleManager to handle the actual BLE communication
-        BleManager(this).connectAndSend(
-            deviceAddress = address,
-            serviceUuid = serviceUuid,
-            characteristicUuid = characteristicUuid,
-            message = message
-        ) { success, statusMessage ->
-            updateNotification(statusMessage)
-            Handler(mainLooper).postDelayed({
-                stopSelf()
-            }, 2000)
+                withContext(Dispatchers.Main) {
+                    // Use BleManager to handle the actual BLE communication
+                    BleManager(this@BleMessageService).connectAndSend(
+                        deviceAddress = settings.deviceAddress,
+                        serviceUuid = settings.serviceUuid,
+                        characteristicUuid = settings.characteristicUuid,
+                        message = settings.message
+                    ) { success, statusMessage ->
+                        updateNotification(statusMessage)
+                        Handler(mainLooper).postDelayed({
+                            stopSelf()
+                        }, 2000)
+                    }
+                }
+            } catch (e: Exception) {
+                updateNotification("Failed to read BLE settings: ${e.message}")
+                Handler(mainLooper).postDelayed({
+                    stopSelf()
+                }, 2000)
+            }
         }
 
         return START_NOT_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
-
-    fun startBleMessageService(context: Context, viewModel: BleSettingsViewModel) {
-        val intent = Intent(context, BleMessageService::class.java).apply {
-            putExtra("ADDRESS", viewModel.deviceAddress.value)
-            putExtra("SERVICE_UUID", viewModel.serviceUuid.value)
-            putExtra("CHARACTERISTIC_UUID", viewModel.characteristicUuid.value)
-            putExtra("MESSAGE", viewModel.message.value)
-        }
-        ContextCompat.startForegroundService(context, intent)
-    }
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -83,7 +86,7 @@ class BleMessageService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("BLE Message")
             .setContentText(text)
-            .setSmallIcon(R.drawable.ic_notification) // Make sure you have this icon
+            .setSmallIcon(android.R.drawable.ic_dialog_info) // Using a system icon as fallback
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setAutoCancel(true)
             .build()
@@ -97,6 +100,6 @@ class BleMessageService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        // No GATT cleanup here; BleManager is handling it per operation
+        serviceScope.cancel()
     }
 }

@@ -26,8 +26,9 @@ import androidx.compose.material.icons.filled.Settings
 import android.provider.Settings
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.ViewModelProvider
 
-// MainActivity.kt
 class MainActivity : ComponentActivity() {
     private lateinit var alarmRepository: AlarmRepository
 
@@ -41,18 +42,24 @@ class MainActivity : ComponentActivity() {
                     AlarmClockApp(alarmRepository)
                 }
             }
-            val bleSettingsViewModel = remember { BleSettingsViewModel() }
         }
     }
 }
 
 @Composable
 fun AlarmClockApp(alarmRepository: AlarmRepository) {
-    val bleSettingsViewModel = remember { BleSettingsViewModel() }
+    val context = LocalContext.current
+
+    // Create ViewModel with proper Application context
+    val bleSettingsViewModel: BleSettingsViewModel = viewModel(
+        factory = ViewModelProvider.AndroidViewModelFactory.getInstance(
+            context.applicationContext as android.app.Application
+        )
+    )
+
     val alarmsState = remember { mutableStateListOf<Alarm>().apply { addAll(alarmRepository.getAllAlarms()) } }
     var currentScreen by remember { mutableStateOf("list") }
     var editingAlarm by remember { mutableStateOf<Alarm?>(null) }
-    val context = LocalContext.current
 
     // Helper to refresh alarms
     fun refreshAlarms() {
@@ -98,109 +105,16 @@ fun AlarmClockApp(alarmRepository: AlarmRepository) {
             },
             onCancel = { currentScreen = "list" }
         )
-        "bleSettings" -> BluetoothSettingsScreen(
-            deviceAddress = bleSettingsViewModel.deviceAddress.value,
-            onDeviceAddressChange = { bleSettingsViewModel.deviceAddress.value = it },
-            serviceUuid = bleSettingsViewModel.serviceUuid.value,
-            onServiceUuidChange = { bleSettingsViewModel.serviceUuid.value = it },
-            message = bleSettingsViewModel.message.value,
-            onMessageChange = { bleSettingsViewModel.message.value = it },
-            onOpenBluetoothSettings = {
-                val intent = Intent(Settings.ACTION_BLUETOOTH_SETTINGS)
-                context.startActivity(intent)
-            },
-            onTestConnection = @androidx.annotation.RequiresPermission(android.Manifest.permission.BLUETOOTH_CONNECT) { bleSettingsViewModel.testConnection(context) },
-            connectionStatus = bleSettingsViewModel.connectionStatus.value,
-            onSendMessage = @androidx.annotation.RequiresPermission(android.Manifest.permission.BLUETOOTH_CONNECT) { bleSettingsViewModel.sendMessage(context) },
-            messageStatus = bleSettingsViewModel.messageStatus.value,
-            onBack = { currentScreen = "list" }
-        )
-    }
-}
 
-@Composable
-fun BluetoothSettingsScreen(
-    deviceAddress: String,
-    onDeviceAddressChange: (String) -> Unit,
-    serviceUuid: String,
-    onServiceUuidChange: (String) -> Unit,
-    message: String,
-    onMessageChange: (String) -> Unit,
-    onOpenBluetoothSettings: () -> Unit,
-    onTestConnection: () -> Unit,
-    connectionStatus: String,
-    onSendMessage: () -> Unit,
-    messageStatus: String,
-    onBack: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(text = "Bluetooth Settings", style = MaterialTheme.typography.headlineMedium)
-            IconButton(onClick = onBack) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+        "bleSettings" -> BleSettingsScreen(
+            viewModel = bleSettingsViewModel,
+            onBack = {
+                // Settings are auto-saved, so just navigate back
+                currentScreen = "list"
             }
-        }
-
-        OutlinedTextField(
-            value = deviceAddress,
-            onValueChange = onDeviceAddressChange,
-            label = { Text("Device Address") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
         )
-
-        OutlinedTextField(
-            value = serviceUuid,
-            onValueChange = onServiceUuidChange,
-            label = { Text("Service UUID") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        OutlinedTextField(
-            value = message,
-            onValueChange = onMessageChange,
-            label = { Text("Message") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Button(onClick = onOpenBluetoothSettings, modifier = Modifier.fillMaxWidth()) {
-            Text("Open Bluetooth Settings")
-        }
-
-        Button(onClick = onTestConnection, modifier = Modifier.fillMaxWidth()) {
-            Text("Test Connection")
-        }
-        if (connectionStatus.isNotEmpty()) {
-            Text(
-                text = connectionStatus,
-                color = if (connectionStatus.contains("Success", ignoreCase = true)) Color.Green else Color.Red,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-
-        Button(onClick = onSendMessage, modifier = Modifier.fillMaxWidth()) {
-            Text("Send Message")
-        }
-        if (messageStatus.isNotEmpty()) {
-            Text(
-                text = messageStatus,
-                color = if (messageStatus.contains("Sent", ignoreCase = true)) Color.Green else Color.Red,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
     }
 }
-
 
 @Composable
 fun AlarmListScreen(
@@ -368,7 +282,6 @@ fun AddEditAlarmScreen(
             TextButton(onClick = onCancel) {
                 Text("Cancel")
             }
-
             TextButton(onClick = {
                 try {
                     val newAlarm = Alarm(
@@ -382,7 +295,7 @@ fun AddEditAlarmScreen(
                         hasNotification = hasNotification,
                         soundUri = soundUri
                     )
-                onSave(newAlarm)
+                    onSave(newAlarm)
                 } catch (e: Exception) {
                     // Log the error - this will help you debug
                     println("Error saving alarm: ${e.message}")
@@ -547,4 +460,3 @@ fun formatRecurringDays(days: Set<Int>): String {
         DayOfWeek.entries.find { it.value == dayValue }?.shortName ?: ""
     }
 }
-
