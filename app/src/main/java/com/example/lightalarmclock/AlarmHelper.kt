@@ -8,7 +8,6 @@ import android.content.Context
 import android.content.Intent
 import java.util.*
 
-// AlarmHelper.kt
 class AlarmHelper(private val context: Context) {
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
@@ -56,7 +55,6 @@ class AlarmHelper(private val context: Context) {
                 set(Calendar.MILLISECOND, 0)
                 set(Calendar.DAY_OF_WEEK, dayOfWeek)
 
-                // If the day has passed this week, schedule for next week
                 if (before(Calendar.getInstance())) {
                     add(Calendar.WEEK_OF_YEAR, 1)
                 }
@@ -114,11 +112,11 @@ class AlarmHelper(private val context: Context) {
         if (alarm.isRecurring) {
             alarm.recurringDays.forEach { dayOfWeek ->
                 cancelAlarmWithId(alarm.id * 10 + dayOfWeek)
-                cancelAlarmWithId(alarm.id * 10 + dayOfWeek + 1000) // BLE alarm
+                cancelAlarmWithId(alarm.id * 10 + dayOfWeek + 1000)
             }
         } else {
             cancelAlarmWithId(alarm.id)
-            cancelAlarmWithId(alarm.id + 1000) // BLE alarm
+            cancelAlarmWithId(alarm.id + 1000)
         }
     }
 
