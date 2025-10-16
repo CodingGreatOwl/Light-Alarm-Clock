@@ -39,8 +39,8 @@ class BleSettingsDataStore(private val context: Context) {
         .map { prefs ->
             BleSettings(
                 deviceAddress = prefs[DEVICE_ADDRESS] ?: "10:52:1C:66:35:CE",
-                serviceUuid = prefs[SERVICE_UUID] ?: "4fafc201-1fb5-459e-8fcc-c5c9c331914b",
-                characteristicUuid = prefs[CHARACTERISTIC_UUID] ?: "beb5483e-36e1-4688-b7f5-ea07361b26a8",
+                serviceUuid = prefs[SERVICE_UUID] ?: "6827989e-079a-404f-946a-da39f968ce82",
+                characteristicUuid = prefs[CHARACTERISTIC_UUID] ?: "c696a5a1-827f-4df2-8260-5cdc7f0a4f44",
                 message = prefs[MESSAGE] ?: "Hello Bananas"
             )
         }
