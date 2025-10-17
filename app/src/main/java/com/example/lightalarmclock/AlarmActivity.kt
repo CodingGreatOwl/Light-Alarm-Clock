@@ -6,21 +6,15 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.media.AudioAttributes
-import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.RingtoneManager
-import android.net.Uri
-import android.os.Build
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.annotation.RequiresPermission
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -34,13 +28,13 @@ import androidx.core.app.NotificationManagerCompat
 import com.example.lightalarmclock.ui.theme.LightAlarmClockTheme
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.core.net.toUri
 
 class AlarmActivity : ComponentActivity() {
 
     private var mediaPlayer: MediaPlayer? = null
     private var vibrator: Vibrator? = null
     private lateinit var dismissReceiver: BroadcastReceiver
-    private val handler = Handler(Looper.getMainLooper())
     private var alarmId: Int = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -101,7 +95,7 @@ class AlarmActivity : ComponentActivity() {
         }
 
         val intentFilter = IntentFilter("com.example.lightalarmclock.DISMISS_ALARM")
-        registerReceiver(dismissReceiver, intentFilter, Context.RECEIVER_NOT_EXPORTED)
+        registerReceiver(dismissReceiver, intentFilter, RECEIVER_NOT_EXPORTED)
     }
 
     private fun startAlarmEffects(soundUri: String?, hasVibration: Boolean) {
@@ -119,7 +113,7 @@ class AlarmActivity : ComponentActivity() {
             mediaPlayer = if (!soundUri.isNullOrEmpty()) {
                 // Use custom sound
                 MediaPlayer().apply {
-                    setDataSource(this@AlarmActivity, Uri.parse(soundUri))
+                    setDataSource(this@AlarmActivity, soundUri.toUri())
                     setAudioAttributes(
                         AudioAttributes.Builder()
                             .setUsage(AudioAttributes.USAGE_ALARM)
@@ -176,23 +170,14 @@ class AlarmActivity : ComponentActivity() {
 
     private fun startVibration() {
         try {
-            vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
-                vibratorManager.defaultVibrator
-            } else {
-                @Suppress("DEPRECATION")
-                getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-            }
+
+            val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+            vibrator =vibratorManager.defaultVibrator
 
             // Create vibration pattern: vibrate 1s, pause 1s, repeat
             val pattern = longArrayOf(0, 1000, 1000)
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vibrator?.vibrate(VibrationEffect.createWaveform(pattern, 0))
-            } else {
-                @Suppress("DEPRECATION")
-                vibrator?.vibrate(pattern, 0)
-            }
+            vibrator?.vibrate(VibrationEffect.createWaveform(pattern, 0))
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -207,7 +192,7 @@ class AlarmActivity : ComponentActivity() {
         notificationManager.cancel(alarmId)
 
         // Clear any pending notifications
-        val systemNotificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val systemNotificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         systemNotificationManager.cancel(alarmId)
         stopService(Intent(this, AlarmRingingService::class.java))
 
@@ -245,16 +230,12 @@ class AlarmActivity : ComponentActivity() {
             hasNotification = intent.getBooleanExtra("HAS_NOTIFICATION", true)
         )
 
-        // Use AlarmHelper to schedule the snooze
-        val alarmHelper = AlarmHelper(this)
-
         // Create a temporary alarm for snooze scheduling
         val calendar = Calendar.getInstance().apply {
             timeInMillis = snoozeTimeMillis
         }
 
         // Schedule using AlarmManager directly for snooze
-        val alarmManager = getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
         val snoozeIntent = Intent(this, AlarmReceiver::class.java).apply {
             putExtra("ALARM_ID", snoozeAlarm.id)
             putExtra("ALARM_LABEL", snoozeAlarm.label)
