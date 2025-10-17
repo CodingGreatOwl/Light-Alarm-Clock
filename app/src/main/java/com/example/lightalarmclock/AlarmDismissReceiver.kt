@@ -7,23 +7,19 @@ import androidx.core.app.NotificationManagerCompat
 
 class AlarmDismissReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
-        val alarmId = intent?.getIntExtra("ALARM_ID", 0) ?: 0
+        val alarmId = intent?.getIntExtra("ALARMID", 0) ?: 0
 
-        // Cancel the notification
+        // Cancel the notification associated with the alarm
         val notificationManager = NotificationManagerCompat.from(context)
         notificationManager.cancel(alarmId)
 
-        // Optional: Stop any ongoing alarm sound/vibration
-        // This would require a service or broadcast to the AlarmActivity
-        val dismissIntent = Intent(context, AlarmActivity::class.java).apply {
-            action = "DISMISS_ALARM"
-            putExtra("ALARM_ID", alarmId)
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        }
+        // Stop the AlarmRingingService to stop the alarm sound
+        val stopIntent = Intent(context, AlarmRingingService::class.java)
+        context.stopService(stopIntent)
 
-        // Send broadcast to dismiss active alarm if AlarmActivity is running
-        val broadcastIntent = Intent("com.example.lightalarmclock.DISMISS_ALARM").apply {
-            putExtra("ALARM_ID", alarmId)
+        // Optionally send broadcast to AlarmActivity for UI update
+        val broadcastIntent = Intent("com.example.lightalarmclock.DISMISSALARM").apply {
+            putExtra("ALARMID", alarmId)
         }
         context.sendBroadcast(broadcastIntent)
     }

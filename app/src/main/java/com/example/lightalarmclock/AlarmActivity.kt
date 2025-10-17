@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.RingtoneManager
@@ -19,6 +20,7 @@ import android.os.VibratorManager
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.annotation.RequiresPermission
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -78,17 +80,8 @@ class AlarmActivity : ComponentActivity() {
     }
 
     private fun setupLockScreenFlags() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            setShowWhenLocked(true)
-            setTurnScreenOn(true)
-        } else {
-            @Suppress("DEPRECATION")
-            window.addFlags(
-                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
-                        WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
-                        WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
-            )
-        }
+        setShowWhenLocked(true)
+        setTurnScreenOn(true)
 
         // Keep screen on while alarm is active
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -108,11 +101,7 @@ class AlarmActivity : ComponentActivity() {
         }
 
         val intentFilter = IntentFilter("com.example.lightalarmclock.DISMISS_ALARM")
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(dismissReceiver, intentFilter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            registerReceiver(dismissReceiver, intentFilter)
-        }
+        registerReceiver(dismissReceiver, intentFilter, Context.RECEIVER_NOT_EXPORTED)
     }
 
     private fun startAlarmEffects(soundUri: String?, hasVibration: Boolean) {
@@ -131,7 +120,12 @@ class AlarmActivity : ComponentActivity() {
                 // Use custom sound
                 MediaPlayer().apply {
                     setDataSource(this@AlarmActivity, Uri.parse(soundUri))
-                    setAudioStreamType(AudioManager.STREAM_ALARM)
+                    setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_ALARM)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                            .build()
+                    )
                     isLooping = true
                     prepare()
                     start()
@@ -143,7 +137,12 @@ class AlarmActivity : ComponentActivity() {
                     ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
 
                 MediaPlayer.create(this, defaultUri)?.apply {
-                    setAudioStreamType(AudioManager.STREAM_ALARM)
+                    setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_ALARM)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                            .build()
+                    )
                     isLooping = true
                     start()
                 }
@@ -160,7 +159,12 @@ class AlarmActivity : ComponentActivity() {
             // Create a simple notification sound as fallback
             val notificationUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
             mediaPlayer = MediaPlayer.create(this, notificationUri)?.apply {
-                setAudioStreamType(AudioManager.STREAM_ALARM)
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ALARM)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .build()
+                )
                 isLooping = true
                 start()
             }
@@ -168,6 +172,7 @@ class AlarmActivity : ComponentActivity() {
             e.printStackTrace()
         }
     }
+
 
     private fun startVibration() {
         try {
@@ -204,6 +209,10 @@ class AlarmActivity : ComponentActivity() {
         // Clear any pending notifications
         val systemNotificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         systemNotificationManager.cancel(alarmId)
+        stopService(Intent(this, AlarmRingingService::class.java))
+
+        // Close the activity or move on as needed
+        finish()
     }
 
     private fun snoozeAlarm() {
@@ -216,6 +225,10 @@ class AlarmActivity : ComponentActivity() {
 
         // Schedule snooze alarm (5 minutes later)
         scheduleSnoozeAlarm()
+        stopService(Intent(this, AlarmRingingService::class.java))
+
+        // Close the activity or move on as needed
+        finish()
     }
 
     private fun scheduleSnoozeAlarm() {
@@ -255,12 +268,6 @@ class AlarmActivity : ComponentActivity() {
             snoozeAlarm.id,
             snoozeIntent,
             android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
-        )
-
-        alarmManager.setExactAndAllowWhileIdle(
-            android.app.AlarmManager.RTC_WAKEUP,
-            snoozeTimeMillis,
-            pendingIntent
         )
     }
 

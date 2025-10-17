@@ -3,16 +3,21 @@ package com.example.lightalarmclock
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.os.Build
+import android.widget.Toast
 
 class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
-        // NEW: Launching the Foreground Service that handles sound and notifications.
-        val serviceIntent = Intent(context, AlarmRingingService::class.java)
+        Toast.makeText(context, "Alarm triggered! Starting service...", Toast.LENGTH_LONG).show()
 
-        // Starting foreground service based on Android version.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            context.startForegroundService(serviceIntent)  // Required for Android O and above
+        // Retrieve ringtone URI string from intent extras (assuming your alarm data includes this)
+        val ringtoneUri = intent?.getStringExtra("RINGTONE_URI") ?: android.provider.Settings.System.DEFAULT_ALARM_ALERT_URI.toString()
+
+        val serviceIntent = Intent(context, AlarmRingingService::class.java).apply {
+            putExtra("RINGTONE_URI", ringtoneUri)
+        }
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            context.startForegroundService(serviceIntent)
         } else {
             context.startService(serviceIntent)
         }
