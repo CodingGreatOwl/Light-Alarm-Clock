@@ -24,7 +24,7 @@ class AlarmRingingService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // Retrieve user-selected ringtone URI passed from AlarmReceiver or default if missing.
-        val ringtoneUriString = intent?.getStringExtra("RINGTONE_URI")
+        val ringtoneUriString = intent?.getStringExtra("SOUND_URI")
         val ringtone: Uri = if (!ringtoneUriString.isNullOrEmpty()) {
             Uri.parse(ringtoneUriString)
         } else {
