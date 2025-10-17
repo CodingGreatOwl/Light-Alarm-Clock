@@ -11,6 +11,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.net.toUri
 
 class AlarmRingingService : Service() {
 
@@ -26,7 +27,7 @@ class AlarmRingingService : Service() {
         // Retrieve user-selected ringtone URI passed from AlarmReceiver or default if missing.
         val ringtoneUriString = intent?.getStringExtra("SOUND_URI")
         val ringtone: Uri = if (!ringtoneUriString.isNullOrEmpty()) {
-            Uri.parse(ringtoneUriString)
+            ringtoneUriString.toUri()
         } else {
             android.provider.Settings.System.DEFAULT_ALARM_ALERT_URI
         }
@@ -57,7 +58,7 @@ class AlarmRingingService : Service() {
         startForeground(1, notification)
 
         // Ensure sound plays through the phone speaker even if a headset is connected.
-        val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
         val devices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
         val speaker = devices.firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }
         if (speaker != null) {
@@ -96,17 +97,15 @@ class AlarmRingingService : Service() {
     }
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                channelId,
-                "Alarm Notifications",
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = "Notifications for active alarms"
-                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            }
-            val manager = getSystemService(NotificationManager::class.java)
-            manager?.createNotificationChannel(channel)
+        val channel = NotificationChannel(
+            channelId,
+            "Alarm Notifications",
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            description = "Notifications for active alarms"
+            lockscreenVisibility = Notification.VISIBILITY_PUBLIC
         }
+        val manager = getSystemService(NotificationManager::class.java)
+        manager?.createNotificationChannel(channel)
     }
 }

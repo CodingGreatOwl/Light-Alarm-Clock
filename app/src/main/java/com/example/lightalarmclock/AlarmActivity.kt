@@ -171,7 +171,7 @@ class AlarmActivity : ComponentActivity() {
     private fun startVibration() {
         try {
 
-            val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+            val vibratorManager = getSystemService(VIBRATOR_MANAGER_SERVICE) as VibratorManager
             vibrator =vibratorManager.defaultVibrator
 
             // Create vibration pattern: vibrate 1s, pause 1s, repeat
@@ -230,11 +230,6 @@ class AlarmActivity : ComponentActivity() {
             hasNotification = intent.getBooleanExtra("HAS_NOTIFICATION", true)
         )
 
-        // Create a temporary alarm for snooze scheduling
-        val calendar = Calendar.getInstance().apply {
-            timeInMillis = snoozeTimeMillis
-        }
-
         // Schedule using AlarmManager directly for snooze
         val snoozeIntent = Intent(this, AlarmReceiver::class.java).apply {
             putExtra("ALARM_ID", snoozeAlarm.id)
@@ -243,13 +238,6 @@ class AlarmActivity : ComponentActivity() {
             putExtra("HAS_VIBRATION", snoozeAlarm.hasVibration)
             putExtra("HAS_NOTIFICATION", snoozeAlarm.hasNotification)
         }
-
-        val pendingIntent = android.app.PendingIntent.getBroadcast(
-            this,
-            snoozeAlarm.id,
-            snoozeIntent,
-            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
-        )
     }
 
     private fun stopAlarmEffects() {
