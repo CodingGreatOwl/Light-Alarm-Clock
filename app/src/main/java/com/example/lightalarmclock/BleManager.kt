@@ -43,22 +43,21 @@ class BleManager(private val context: Context) {
                         onResult(true, "Message Sent")
                     } else {
                         onResult(false, "Characteristic not found")
-                        gatt.disconnect()
-                        gatt.close()
                     }
                 } else {
                     onResult(false, "Service discovery failed")
-                    gatt.disconnect()
-                    gatt.close()
                 }
+                gatt.disconnect()
+                gatt.close()
             }
 
-            @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+            /*@RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
             override fun onCharacteristicWrite(gatt: BluetoothGatt, char: BluetoothGattCharacteristic, status: Int) {
                 if (status == BluetoothGatt.GATT_SUCCESS) {
                     gatt.disconnect()
+                    gatt.close()
                 }
-            }
+            }*/
         })
     }
 

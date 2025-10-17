@@ -335,7 +335,7 @@ fun AlarmScreen(
             // Snooze button
             Button(
                 onClick = onSnooze,
-                modifier = Modifier.size(100.dp),
+                modifier = Modifier.size(105.dp),
                 shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.secondary
@@ -350,7 +350,7 @@ fun AlarmScreen(
             // Dismiss button
             Button(
                 onClick = onDismiss,
-                modifier = Modifier.size(100.dp),
+                modifier = Modifier.size(105.dp),
                 shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.error
