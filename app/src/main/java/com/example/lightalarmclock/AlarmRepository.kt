@@ -7,9 +7,13 @@ import androidx.core.content.edit
 
 // AlarmRepository.kt
 class AlarmRepository(private val context: Context) {
+
+    fun getAlarmById(alarmId: Int): Alarm? {
+        return getAllAlarms().firstOrNull { it.id == alarmId }
+    }
     private val sharedPrefs = context.getSharedPreferences("alarms", Context.MODE_PRIVATE)
     private val gson = Gson()
-    private val alarmHelper = AlarmHelper(context)
+    private val alarmHelper = AlarmHelper(context, this)
 
     fun getAllAlarms(): List<Alarm> {
         val alarmsJson = sharedPrefs.getString("alarms_list", "[]")

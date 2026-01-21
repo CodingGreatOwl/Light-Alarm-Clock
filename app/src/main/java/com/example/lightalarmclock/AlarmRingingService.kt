@@ -59,6 +59,17 @@ class AlarmRingingService : Service() {
             this, 0, openIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        // Snooze intent
+        val snoozeIntent = Intent(this, AlarmDismissReceiver::class.java).apply {
+            action = "ACTION_SNOOZE"
+        }
+        val snoozePendingIntent = PendingIntent.getBroadcast(
+            this,
+            1, // Use unique requestCode for snooze
+            snoozeIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         val dismissIntent = Intent(this, AlarmDismissReceiver::class.java)
         val dismissPendingIntent = PendingIntent.getBroadcast(
             this,
@@ -67,11 +78,23 @@ class AlarmRingingService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val fullScreenIntent = Intent(this, AlarmActivity::class.java)
+        fullScreenIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        val fullScreenPendingIntent = PendingIntent.getActivity(
+            this, 0, fullScreenIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         val notification: Notification = NotificationCompat.Builder(this, channelId)
             .setContentTitle("Alarm is ringing")
             .setContentText("Tap to open or dismiss")
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .setContentIntent(openPendingIntent)
+                .setFullScreenIntent(fullScreenPendingIntent, true)
+            .addAction(
+                android.R.drawable.ic_menu_recent_history,
+                "Snooze",
+                snoozePendingIntent
+            )
             .addAction(
                 android.R.drawable.ic_menu_close_clear_cancel,
                 "Dismiss",

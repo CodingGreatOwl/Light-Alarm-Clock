@@ -8,7 +8,7 @@ import android.content.Context
 import android.content.Intent
 import java.util.*
 
-class AlarmHelper(private val context: Context) {
+class AlarmHelper(private val context: Context, private val alarmRepository: AlarmRepository) {
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
     fun scheduleAlarm(alarm: Alarm) {
@@ -106,6 +106,14 @@ class AlarmHelper(private val context: Context) {
             timeMillis - 10 * 60 * 1000,
             blePendingIntent
         )
+    }
+
+    fun scheduleAlarmWithDelay(alarmId: Int, delayMillis: Long) {
+        val alarm = alarmRepository.getAlarmById(alarmId) ?: return
+        val calendar = Calendar.getInstance().apply {
+            add(Calendar.MILLISECOND, delayMillis.toInt())
+        }
+        scheduleAlarmAtTime(alarm, calendar.timeInMillis)
     }
 
     fun cancelAlarm(alarm: Alarm) {

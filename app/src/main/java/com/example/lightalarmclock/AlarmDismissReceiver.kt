@@ -7,6 +7,21 @@ import androidx.core.app.NotificationManagerCompat
 
 class AlarmDismissReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
+        when (intent?.action) {
+            "ACTION_SNOOZE" -> {
+                // Handle Snooze Action
+                val alarmId = intent.getIntExtra("ALARMID", 0)
+                val alarmHelper = AlarmHelper(context, AlarmRepository(context))
+                // Schedule alarm snooze (10 minutes delay)
+                alarmHelper.scheduleAlarmWithDelay(alarmId, 10 * 60 * 1000L)
+
+                // Dismiss current notification
+                val notificationManager = NotificationManagerCompat.from(context)
+                notificationManager.cancel(alarmId)
+
+                return
+            }
+        }
         val alarmId = intent?.getIntExtra("ALARMID", 0) ?: 0
 
         // Cancel the notification associated with the alarm
