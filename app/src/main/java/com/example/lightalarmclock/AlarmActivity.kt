@@ -80,7 +80,7 @@ class AlarmActivity : ComponentActivity() {
         // Keep screen on while alarm is active
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-        val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as android.app.KeyguardManager
+        val keyguardManager = getSystemService(KEYGUARD_SERVICE) as android.app.KeyguardManager
         if (keyguardManager.isKeyguardLocked) {
             keyguardManager.requestDismissKeyguard(this, null)
         }
@@ -237,7 +237,7 @@ class AlarmActivity : ComponentActivity() {
     }
 
     private fun scheduleSnoozeAlarm() {
-        val snoozeTimeMillis = System.currentTimeMillis() + (5 * 60 * 1000) // 5 minutes
+        System.currentTimeMillis() + (5 * 60 * 1000) // 5 minutes
         val snoozeAlarm = Alarm(
             id = alarmId + 50000, // Different ID for snooze to avoid conflicts
             hour = 0, // Will be calculated from snoozeTimeMillis
@@ -251,7 +251,7 @@ class AlarmActivity : ComponentActivity() {
         )
 
         // Schedule using AlarmManager directly for snooze
-        val snoozeIntent = Intent(this, AlarmReceiver::class.java).apply {
+        Intent(this, AlarmReceiver::class.java).apply {
             putExtra("ALARM_ID", snoozeAlarm.id)
             putExtra("ALARM_LABEL", snoozeAlarm.label)
             putExtra("SOUND_URI", snoozeAlarm.soundUri)
@@ -287,11 +287,6 @@ class AlarmActivity : ComponentActivity() {
         // Unregister receiver
         unregisterReceiver(dismissReceiver)
 
-    }
-
-    override fun onBackPressed() {
-        // Prevent back button from dismissing alarm
-        // User must explicitly dismiss or snooze
     }
 }
 

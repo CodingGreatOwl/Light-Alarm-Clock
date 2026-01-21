@@ -9,7 +9,6 @@ import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.net.Uri
-import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import android.os.VibrationEffect
@@ -31,20 +30,20 @@ class AlarmRingingService : Service() {
 
     @SuppressLint("ServiceCast")
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-    // Acquire wake lock to keep the device awake
-    val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-    wakeLock = powerManager.newWakeLock(
-        PowerManager.PARTIAL_WAKE_LOCK,
-        "LightAlarmClock::AlarmWakeLock"
-    )
-    wakeLock.acquire(10 * 60 * 1000L /* 10 minutes */) // Auto-release after 10 minutes
+        // Acquire wake lock to keep the device awake
+        val powerManager = getSystemService(POWER_SERVICE) as PowerManager
+        wakeLock = powerManager.newWakeLock(
+            PowerManager.PARTIAL_WAKE_LOCK,
+            "LightAlarmClock::AlarmWakeLock"
+        )
+        wakeLock.acquire(10 * 60 * 1000L /* 10 minutes */) // Auto-release after 10 minutes
 
-    // Initialize vibration
-    val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
-    val vibrator = vibratorManager.defaultVibrator
+        // Initialize vibration
+        val vibratorManager = getSystemService(VIBRATOR_MANAGER_SERVICE) as VibratorManager
+        val vibrator = vibratorManager.defaultVibrator
 
-    val vibrationPattern = longArrayOf(0, 1000, 500, 1000)
-    vibrator.vibrate(VibrationEffect.createWaveform(vibrationPattern, 0))
+        val vibrationPattern = longArrayOf(0, 1000, 500, 1000)
+        vibrator.vibrate(VibrationEffect.createWaveform(vibrationPattern, 0))
 
         // Retrieve user-selected ringtone URI passed from AlarmReceiver or default if missing.
         val ringtoneUriString = intent?.getStringExtra("SOUND_URI")
@@ -63,7 +62,10 @@ class AlarmRingingService : Service() {
 
         val dismissIntent = Intent(this, AlarmDismissReceiver::class.java)
         val dismissPendingIntent = PendingIntent.getBroadcast(
-            this, 0, dismissIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            this,
+            0,
+            dismissIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         val notification: Notification = NotificationCompat.Builder(this, channelId)
@@ -71,7 +73,11 @@ class AlarmRingingService : Service() {
             .setContentText("Tap to open or dismiss")
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .setContentIntent(openPendingIntent)
-            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Dismiss", dismissPendingIntent)
+            .addAction(
+                android.R.drawable.ic_menu_close_clear_cancel,
+                "Dismiss",
+                dismissPendingIntent
+            )
             .setOngoing(true)
             .setAutoCancel(false)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -106,8 +112,10 @@ class AlarmRingingService : Service() {
     }
 
     override fun onDestroy() {
-    // Release wake lock if held
-    if (::wakeLock.isInitialized && wakeLock.isHeld) wakeLock.release()
+        // Release wake lock if held
+        if (::wakeLock.isInitialized && wakeLock.isHeld) {
+            wakeLock.release()
+        }
         super.onDestroy()
         stopRingtone()
     }
