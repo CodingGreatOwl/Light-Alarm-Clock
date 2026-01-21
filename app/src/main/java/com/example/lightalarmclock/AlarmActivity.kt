@@ -79,6 +79,26 @@ class AlarmActivity : ComponentActivity() {
 
         // Keep screen on while alarm is active
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+        val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as android.app.KeyguardManager
+        if (keyguardManager.isKeyguardLocked) {
+            keyguardManager.requestDismissKeyguard(this, null)
+        }
+        setContent {
+            LightAlarmClockTheme {
+                AlarmScreen(
+                    label = "",
+                    onDismiss = {
+                        dismissAlarm()
+                        finish()
+                    },
+                    onSnooze = {
+                        snoozeAlarm()
+                        finish()
+                    }
+                )
+            }
+        }
     }
 
     private fun setupDismissReceiver() {
