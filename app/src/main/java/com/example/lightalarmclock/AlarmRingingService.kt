@@ -1,5 +1,6 @@
 package com.example.lightalarmclock
 
+import android.annotation.SuppressLint
 import android.app.*
 import android.content.Context
 import android.content.Intent
@@ -10,10 +11,15 @@ import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
+import android.os.VibrationEffect
+import android.os.VibratorManager
 import androidx.core.app.NotificationCompat
 import androidx.core.net.toUri
 
 class AlarmRingingService : Service() {
+
+    private lateinit var wakeLock: PowerManager.WakeLock
 
     private var mediaPlayer: MediaPlayer? = null
     private val channelId = "alarm_channel"
@@ -23,7 +29,23 @@ class AlarmRingingService : Service() {
         createNotificationChannel()
     }
 
+    @SuppressLint("ServiceCast")
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    // Acquire wake lock to keep the device awake
+    val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+    wakeLock = powerManager.newWakeLock(
+        PowerManager.PARTIAL_WAKE_LOCK,
+        "LightAlarmClock::AlarmWakeLock"
+    )
+    wakeLock.acquire(10 * 60 * 1000L /* 10 minutes */) // Auto-release after 10 minutes
+
+    // Initialize vibration
+    val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+    val vibrator = vibratorManager.defaultVibrator
+
+    val vibrationPattern = longArrayOf(0, 1000, 500, 1000)
+    vibrator.vibrate(VibrationEffect.createWaveform(vibrationPattern, 0))
+
         // Retrieve user-selected ringtone URI passed from AlarmReceiver or default if missing.
         val ringtoneUriString = intent?.getStringExtra("SOUND_URI")
         val ringtone: Uri = if (!ringtoneUriString.isNullOrEmpty()) {
@@ -84,6 +106,8 @@ class AlarmRingingService : Service() {
     }
 
     override fun onDestroy() {
+    // Release wake lock if held
+    if (::wakeLock.isInitialized && wakeLock.isHeld) wakeLock.release()
         super.onDestroy()
         stopRingtone()
     }

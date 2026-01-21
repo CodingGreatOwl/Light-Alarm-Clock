@@ -284,13 +284,9 @@ class AlarmActivity : ComponentActivity() {
 
         // Clean up resources
         stopAlarmEffects()
-
         // Unregister receiver
-        try {
-            unregisterReceiver(dismissReceiver)
-        } catch (e: Exception) {
-            // Receiver might not be registered
-        }
+        unregisterReceiver(dismissReceiver)
+
     }
 
     override fun onBackPressed() {
