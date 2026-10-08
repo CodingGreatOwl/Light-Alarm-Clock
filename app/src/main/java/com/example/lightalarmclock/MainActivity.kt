@@ -314,16 +314,24 @@ fun NumberPickerWheel(
     val listSize = rangeSize * multiplier
 
     // Calculate initial index in the big list for the given value
-    val initialIndex = (listSize / 2) - (listSize / 2) % rangeSize + (value - valueRange.first)
+    val initialIndex =
+        (listSize / 2) -
+                (listSize / 2) % rangeSize +
+                (value - valueRange.first)
 
-    val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
-    val coroutineScope = rememberCoroutineScope()
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = initialIndex
+    )
 
     Column(
         modifier = modifier.width(80.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(bottom = 8.dp))
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
 
         Box(
             modifier = Modifier
@@ -338,10 +346,32 @@ fun NumberPickerWheel(
             ) {
                 items(listSize) { index ->
                     val itemValue = valueRange.first + index % rangeSize
-                    val isSelected = index == listState.firstVisibleItemIndex
+
+                    // Determine whether this item is at the center
+                    // of the visible viewport.
+                    val layoutInfo = listState.layoutInfo
+
+                    val viewportCenter =
+                        (layoutInfo.viewportStartOffset +
+                                layoutInfo.viewportEndOffset) / 2
+
+                    val itemInfo = layoutInfo.visibleItemsInfo
+                        .firstOrNull { it.index == index }
+
+                    val isSelected = itemInfo?.let {
+                        val itemCenter = it.offset + it.size / 2
+
+                        kotlin.math.abs(itemCenter - viewportCenter) <
+                                it.size / 2
+                    } ?: false
+
                     Text(
                         text = "%02d".format(itemValue),
-                        style = if (isSelected) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.bodyMedium,
+                        style = if (isSelected) {
+                            MaterialTheme.typography.headlineSmall
+                        } else {
+                            MaterialTheme.typography.bodyMedium
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(4.dp)
@@ -356,19 +386,35 @@ fun NumberPickerWheel(
                     .align(Alignment.Center)
                     .height(40.dp)
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                    .background(
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                    )
             )
         }
 
-        // Snap and update selection on scroll end
+        // Update the selected value based on the item
+        // that reaches the center of the widget.
         LaunchedEffect(listState.isScrollInProgress) {
             if (!listState.isScrollInProgress) {
-                val centeredIndex = listState.firstVisibleItemIndex
-                val newValue = valueRange.first + centeredIndex % rangeSize
-                if (newValue != value) {
-                    onValueChange(newValue)
-                    coroutineScope.launch {
-                        listState.animateScrollToItem(centeredIndex)
+                val layoutInfo = listState.layoutInfo
+
+                val viewportCenter =
+                    (layoutInfo.viewportStartOffset +
+                            layoutInfo.viewportEndOffset) / 2
+
+                val centeredItem = layoutInfo.visibleItemsInfo
+                    .minByOrNull {
+                        kotlin.math.abs(
+                            (it.offset + it.size / 2) - viewportCenter
+                        )
+                    }
+
+                centeredItem?.let {
+                    val newValue =
+                        valueRange.first + it.index % rangeSize
+
+                    if (newValue != value) {
+                        onValueChange(newValue)
                     }
                 }
             }
