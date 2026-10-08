@@ -28,6 +28,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.ViewModelProvider
 import com.example.lightalarmclock.ui.theme.LightAlarmClockTheme
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -308,12 +309,10 @@ fun NumberPickerWheel(
     modifier: Modifier = Modifier
 ) {
     val rangeSize = valueRange.last - valueRange.first + 1
-    val multiplier = 1000 // Repeat range 1000 times for smooth infinite scroll
+    val multiplier = 1000
 
-    // Large list size of repeated values
     val listSize = rangeSize * multiplier
 
-    // Calculate initial index in the big list for the given value
     val initialIndex =
         (listSize / 2) -
                 (listSize / 2) % rangeSize +
@@ -322,6 +321,8 @@ fun NumberPickerWheel(
     val listState = rememberLazyListState(
         initialFirstVisibleItemIndex = initialIndex
     )
+
+    val coroutineScope = rememberCoroutineScope()
 
     Column(
         modifier = modifier.width(80.dp),
@@ -347,8 +348,6 @@ fun NumberPickerWheel(
                 items(listSize) { index ->
                     val itemValue = valueRange.first + index % rangeSize
 
-                    // Determine whether this item is at the center
-                    // of the visible viewport.
                     val layoutInfo = listState.layoutInfo
 
                     val viewportCenter =
@@ -392,8 +391,6 @@ fun NumberPickerWheel(
             )
         }
 
-        // Update the selected value based on the item
-        // that reaches the center of the widget.
         LaunchedEffect(listState.isScrollInProgress) {
             if (!listState.isScrollInProgress) {
                 val layoutInfo = listState.layoutInfo
@@ -402,6 +399,7 @@ fun NumberPickerWheel(
                     (layoutInfo.viewportStartOffset +
                             layoutInfo.viewportEndOffset) / 2
 
+                // Find the item closest to the center.
                 val centeredItem = layoutInfo.visibleItemsInfo
                     .minByOrNull {
                         kotlin.math.abs(
@@ -409,12 +407,28 @@ fun NumberPickerWheel(
                         )
                     }
 
-                centeredItem?.let {
+                centeredItem?.let { item ->
                     val newValue =
-                        valueRange.first + it.index % rangeSize
+                        valueRange.first + item.index % rangeSize
 
                     if (newValue != value) {
                         onValueChange(newValue)
+                    }
+
+                    // Calculate how far the item's center is from
+                    // the center of the viewport.
+                    val itemCenter = item.offset + item.size / 2
+
+                    val scrollOffset = itemCenter - viewportCenter
+
+                    // Move the item so that its center is exactly
+                    // aligned with the center of the widget.
+                    if (scrollOffset != 0) {
+                        coroutineScope.launch {
+                            listState.animateScrollBy(
+                                scrollOffset.toFloat()
+                            )
+                        }
                     }
                 }
             }
